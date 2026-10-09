@@ -44,9 +44,9 @@
          downloaded at build time and checked against these SHA-256 sums, copied from that release's SHA256SUMS.
          The Windows exes are the jr-noicon-* builds: an app exe carries an icon only when its own pom names one.
          To move to a new jr release, change jr.release and the five sums together. -->
-    <jr.release>1.3.0</jr.release>
-    <jr.sha256.windows-x86_64>2f80103af11d76ff62bc95f090838ee16bdd31b85033c191d5637994d7a9ce15</jr.sha256.windows-x86_64>
-    <jr.sha256.windows-arm64>7eaa1ed077eec76026e4e65aa415f05e88894de89c92fda6bd9a2cb2a8651271</jr.sha256.windows-arm64>
+    <jr.release>1.3.1</jr.release>
+    <jr.sha256.windows-x86_64>72cb0f1614d07dc608a2d4a425696b140c41f705d2c6b9cf08cafa434e78eaf3</jr.sha256.windows-x86_64>
+    <jr.sha256.windows-arm64>9f51c229d9e6dac8500654021e6218551662f6a8ac2ab84c2e4085fe91915044</jr.sha256.windows-arm64>
     <jr.sha256.macos>cdc6a61180e9a97dd8e5ea5f626ff6062eb8747b2f137dfd0bf85c80647369ee</jr.sha256.macos>
     <jr.sha256.macos-arm64>20c2dbd8feb180d389204d51ea495b4c888fdb3a79520b733c93fd4a5c66aff7</jr.sha256.macos-arm64>
     <jr.sha256.macos-x86_64>904054df88a0dbf5df80826bfe6d444b81b06d7440038bdea90de60d6ed7001c</jr.sha256.macos-x86_64>
