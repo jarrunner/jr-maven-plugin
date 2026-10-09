@@ -4,7 +4,7 @@ Builds a [jr](https://github.com/jarrunner/jr) launcher exe for a Java app as pa
 
 It hashes the app's shaded jar (SHA-256 and CRC32), writes the jrc-json, and has jr itself check and bake that config, the icon and the version info into a copy of the jr exe bundled in the plugin. The result is one exe that carries everything it needs: its config cannot be overridden by a file beside it, and a release exe fetches its jar on first run, verifies it, and updates itself with `-Xjr:update`.
 
-Windows only for now: stamping uses Windows' own resource calls, so on another OS the goal logs a warning and does nothing. On Maven Central from 1.1.0 (`io.github.jarrunner:jr-maven-plugin:1.1.0`, which bundles jr 1.1.0). The plugin bundles the jr binaries of one jr release, without the jr icon: the build downloads them from [jr's releases](https://github.com/jarrunner/jr/releases) and checks each against a SHA-256 sum written in the pom (`jr.release` and the `jr.sha256.*` properties), so `mvn install` needs nothing else. This version bundles jr 1.2.1.
+Windows only for now: stamping uses Windows' own resource calls, so on another OS the goal logs a warning and does nothing. On Maven Central from 1.1.0 (`io.github.jarrunner:jr-maven-plugin:1.1.0`, which bundles jr 1.1.0). The plugin bundles the jr binaries of one jr release, without the jr icon: the build downloads them from [jr's releases](https://github.com/jarrunner/jr/releases) and checks each against a SHA-256 sum written in the pom (`jr.release` and the `jr.sha256.*` properties), so `mvn install` needs nothing else. This version bundles jr 1.3.0.
 
 ## Use
 
@@ -63,7 +63,7 @@ mvn -Djr.installDir=<dir> package    also copies the exe to <dir>
 - `macosIcon`: a `.png`, `.icns`, or PNG-entry `.ico`; default `icon`. `macosNoIcon` (`jr.macosNoIcon`) leaves the icon out. Inside the app, jr passes `-Xdock:name` and `-Xdock:icon` to Java, so the Dock shows the app's name and icon rather than "java".
 - `macosDisplayName` (default `productName`, else `name`), `macosBundleId` (default `appId` with `:` as `.`). The app needs macOS 13 or later.
 - With `source=path` and no `jarPath`, a `binary` built on a Mac runs the build's own jar, as on Windows. Built anywhere else it expects `<jar name>` beside itself.
-- How the config gets in: jr's macOS build carries an empty 16 KB `__DATA,__jrc` section. The plugin writes the config there and recomputes the affected page hashes of the binary's ad-hoc signature, so the result runs on Apple silicon without a Mac in the build. An embedded config wins over any `.jrc` beside the binary, as on Windows.
+- How the config gets in: jr's macOS build carries an empty 16 KB `__DATA,__jrc` section. The plugin writes the config there and recomputes the affected page hashes of the binary's ad-hoc signature, so the result runs on Apple silicon without a Mac in the build. jr reads its config from there and from nowhere else, as on Windows.
 - Signing: ad hoc only, with no Apple Developer ID. A copy downloaded with a browser is blocked by Gatekeeper until the user allows it (System Settings, Privacy & Security, Open Anyway). Installing with `curl` avoids that. See jr's `docs/macos.md`.
 - In a release, the binary and the app's zip are published and listed in `SHA256SUMS`. They are not in the update file, because `-Xjr:update` is Windows-only.
 
