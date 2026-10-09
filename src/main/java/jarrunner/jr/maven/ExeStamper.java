@@ -79,7 +79,17 @@ final class ExeStamper {
         var cmd = new ArrayList<>(List.of(editor.getPath(), "-Xjr:edit=" + out.getPath(),
                 "-Xjr:resource.RCDATA.JRC=" + json.getPath(), "-Xjr:version=" + numericVersion(version),
                 "-Xjr:version.ProductVersion=" + version));
-        strings.forEach((k, v) -> cmd.add("-Xjr:version." + k + "=" + v));
+        // Since 1.2.1 the bundled jr exes carry jr's own version strings, and stamping keeps what a
+        // target already has: every one of them is set here, from the app, so none says "jr".
+        var all = new LinkedHashMap<String, String>();
+        all.put("CompanyName", "");
+        all.put("ProductName", name);
+        all.put("FileDescription", name);
+        all.put("LegalCopyright", "");
+        all.put("InternalName", name);
+        all.put("OriginalFilename", name + ".exe");
+        all.putAll(strings);
+        all.forEach((k, v) -> cmd.add("-Xjr:version." + k + "=" + v));
         if (icon != null) cmd.add("-Xjr:icon=" + icon.getPath());
         cmd.add("-Xjr:manifest=" + manifestUsed.getPath());
         // A freshly written exe is sometimes still held by an on-write virus scan; jr reports error 32.

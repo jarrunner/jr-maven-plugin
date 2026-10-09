@@ -1,0 +1,26 @@
+# Builds and tests the plugin on a clean Windows machine. The build downloads the jr binaries it
+# bundles from the jr release named in the pom (jr.release) and checks each against its SHA-256, so
+# this also proves that release still matches the sums in the pom.
+
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Build and test
+        run: mvn -B verify

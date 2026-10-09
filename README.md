@@ -1,10 +1,10 @@
 # jr-maven-plugin
 
-Builds a [jr](../jr) launcher exe for a Java app as part of its Maven build: `io.github.jarrunner:jr-maven-plugin`, goal `jr:exe`, bound to `package` by default.
+Builds a [jr](https://github.com/jarrunner/jr) launcher exe for a Java app as part of its Maven build: `io.github.jarrunner:jr-maven-plugin`, goal `jr:exe`, bound to `package` by default.
 
 It hashes the app's shaded jar (SHA-256 and CRC32), writes the jrc-json, and has jr itself check and bake that config, the icon and the version info into a copy of the jr exe bundled in the plugin. The result is one exe that carries everything it needs: its config cannot be overridden by a file beside it, and a release exe fetches its jar on first run, verifies it, and updates itself with `-Xjr:update`.
 
-Windows only for now: stamping uses Windows' own resource calls, so on another OS the goal logs a warning and does nothing. On Maven Central from 1.1.0 (`io.github.jarrunner:jr-maven-plugin:1.1.0`), versioned with jr: 1.1.0 bundles jr 1.1.0 (tag `v1.1.0`), built without the jr icon. To build it yourself, build jr first with `../jr/mvn package "-Djr.noicon=true" "-Djr.dist=dist-noicon"` in `../jr`; the tests fail if those exes are missing.
+Windows only for now: stamping uses Windows' own resource calls, so on another OS the goal logs a warning and does nothing. On Maven Central from 1.1.0 (`io.github.jarrunner:jr-maven-plugin:1.1.0`, which bundles jr 1.1.0). The plugin bundles the jr binaries of one jr release, without the jr icon: the build downloads them from [jr's releases](https://github.com/jarrunner/jr/releases) and checks each against a SHA-256 sum written in the pom (`jr.release` and the `jr.sha256.*` properties), so `mvn install` needs nothing else. This version bundles jr 1.2.1.
 
 ## Use
 
@@ -80,4 +80,4 @@ Parameters: `release` (`jr.release`), `releaseDirectory`, `releaseBaseUrl` (`jr.
 
 The jrc-json it writes is kept beside the exe as `<name>.jrc.json`, for review; the exe never reads it from there.
 
-The app receives its whole config as `-Dio.github.jarrunner.jr.<path>` properties; [jr-runtime](../jr-runtime) reads them and offers an update check.
+The app receives its whole config as `-Dio.github.jarrunner.jr.<path>` properties; [jr-runtime](https://github.com/jarrunner/jr-runtime) reads them and offers an update check.

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/** PRP-36: the macOS outputs. Needs the bundled jr-macos binaries (jr/dist-macos, see the pom). */
+/** PRP-36: the macOS outputs. Needs the bundled jr-macos binaries (downloaded from the jr release, see the pom). */
 class MacOutputsTest {
 
     @TempDir Path dir;
@@ -88,7 +88,7 @@ class MacOutputsTest {
         var jar = TestApp.jar(dir);
         var m = mojo(jar);
         m.macosForms = List.of("app");
-        m.icon = new File("../icon/jr-icon.ico");
+        m.icon = new File("src/test/resources/jr-icon.ico");
         m.productName = "Hello World";
         m.execute();
         var app = dir.resolve("out/macos/Hello World.app/Contents");
@@ -116,7 +116,7 @@ class MacOutputsTest {
     @Test void appFormWithoutIcon() throws Exception {
         var m = mojo(TestApp.jar(dir));
         m.macosForms = List.of("app");
-        m.icon = new File("../icon/jr-icon.ico");
+        m.icon = new File("src/test/resources/jr-icon.ico");
         m.macosNoIcon = true;
         m.macosArchitecture = "x86_64";
         m.execute();

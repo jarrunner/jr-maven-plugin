@@ -118,6 +118,20 @@ class ExeMojoTest {
     }
 
     @Test @EnabledOnOs(OS.WINDOWS)
+    void versionStringsAreTheAppsNeverJrs() throws Exception {
+        // The bundled jr exes carry jr's own version strings (since jr 1.2.1); none may survive into an app.
+        var m = mojo(TestApp.jar(dir));
+        m.execute();
+        var exe = new File(m.outputDirectory, "hello.exe");
+        var p = new ProcessBuilder("powershell", "-NoProfile", "-Command",
+                "$v=(Get-Item '" + exe.getPath() + "').VersionInfo; $v.CompanyName+'|'+$v.ProductName+'|'+$v.FileDescription+'|'+$v.LegalCopyright+'|'+$v.InternalName+'|'+$v.OriginalFilename")
+                .redirectErrorStream(true).start();
+        var out = new String(p.getInputStream().readAllBytes()).trim();
+        assertEquals(0, p.waitFor(), out);
+        assertEquals("|hello|hello||hello|hello.exe", out);
+    }
+
+    @Test @EnabledOnOs(OS.WINDOWS)
     void stampsTheGivenIconAndInstalls() throws Exception {
         var m = mojo(TestApp.jar(dir));
         m.icon = icon();
@@ -143,7 +157,7 @@ class ExeMojoTest {
 
     /** A real 256px PNG-compressed icon: jr's own, from the repository. */
     static File icon() {
-        var f = new File("../icon/jr-icon.ico");
+        var f = new File("src/test/resources/jr-icon.ico");
         assertTrue(f.isFile(), "expected jr's icon at " + f.getAbsolutePath());
         return f;
     }

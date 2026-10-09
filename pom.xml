@@ -9,7 +9,7 @@
 
   <name>jr-maven-plugin</name>
   <description>Builds jr launcher exes for a Java app in the package phase: hashes the shaded jar, writes the jrc-json, stamps it with the icon and version into the jr exes bundled in this plugin, and optionally copies the result to an install directory.</description>
-  <url>https://github.com/jarrunner/jr</url>
+  <url>https://github.com/jarrunner/jr-maven-plugin</url>
 
   <licenses>
     <license>
@@ -28,9 +28,9 @@
   </developers>
 
   <scm>
-    <connection>scm:git:git://github.com/jarrunner/jr.git</connection>
-    <developerConnection>scm:git:ssh://github.com:jarrunner/jr.git</developerConnection>
-    <url>https://github.com/jarrunner/jr</url>
+    <connection>scm:git:git://github.com/jarrunner/jr-maven-plugin.git</connection>
+    <developerConnection>scm:git:ssh://github.com:jarrunner/jr-maven-plugin.git</developerConnection>
+    <url>https://github.com/jarrunner/jr-maven-plugin</url>
   </scm>
 
   <properties>
@@ -40,13 +40,18 @@
     <plugin-tools.version>3.16.0</plugin-tools.version>
     <datahelper.version>2.0</datahelper.version>
     <jackson.version>2.22.2</jackson.version>
-    <!-- The jr exes this plugin bundles: mvn package "-Djr.noicon=true" "-Djr.dist=dist-noicon". Icon-less on purpose:
-         an app exe carries an icon only when its own pom names one, never jr's. -->
-    <jr.dist>${project.basedir}/../jr/dist-noicon</jr.dist>
-    <!-- The macOS jr binaries this plugin bundles (PRP-36): built by jr's mvn package on a Mac (CI job macos), collected here
-         from that CI run's artifact or a GitHub release. A plugin built without them makes no macOS
-         outputs and says so. -->
-    <jr.macdist>${project.basedir}/../jr/dist-macos</jr.macdist>
+    <!-- The jr binaries this plugin bundles come from a jr release (https://github.com/jarrunner/jr/releases),
+         downloaded at build time and checked against these SHA-256 sums, copied from that release's SHA256SUMS.
+         The Windows exes are the jr-noicon-* builds: an app exe carries an icon only when its own pom names one.
+         To move to a new jr release, change jr.release and the five sums together. -->
+    <jr.release>1.2.1</jr.release>
+    <jr.sha256.windows-x86_64>95044582f7fbc892b3e59ced4af1e448e0b3fa322b74474c770b4622b838f4f4</jr.sha256.windows-x86_64>
+    <jr.sha256.windows-arm64>3b88382da8e0126fc45d9778809b40be30ba08bdb0a4d2dd2370bd1895ca5483</jr.sha256.windows-arm64>
+    <jr.sha256.macos>324e728c2283242fbc1ed99a15501773e60259f0cff6fd2a7b12933d14b66e89</jr.sha256.macos>
+    <jr.sha256.macos-arm64>d4588edb8d76856b21479deee618b8c0c2976ea04d49bf1dd49849d3aa6730be</jr.sha256.macos-arm64>
+    <jr.sha256.macos-x86_64>4ce3e24efbef8d7de77e2590338130b5f7758c00d8052d84c7fb30681683850a</jr.sha256.macos-x86_64>
+    <jr.download>https://github.com/jarrunner/jr/releases/download/v${jr.release}</jr.download>
+    <jr.dist>${project.build.directory}/jr-bin</jr.dist>
   </properties>
 
   <dependencies>
@@ -109,7 +114,7 @@
         </includes>
       </resource>
       <resource>
-        <directory>${jr.macdist}</directory>
+        <directory>${jr.dist}</directory>
         <targetPath>jarrunner/jr/maven</targetPath>
         <includes>
           <include>jr-macos</include>
@@ -122,6 +127,64 @@
       </resource>
     </resources>
     <plugins>
+      <plugin>
+        <groupId>com.googlecode.maven-download-plugin</groupId>
+        <artifactId>download-maven-plugin</artifactId>
+        <version>1.13.0</version>
+        <configuration>
+          <outputDirectory>${jr.dist}</outputDirectory>
+          <failOnError>true</failOnError>
+        </configuration>
+        <executions>
+          <execution>
+            <id>jr-windows-x86_64</id>
+            <phase>generate-resources</phase>
+            <goals><goal>wget</goal></goals>
+            <configuration>
+              <uri>${jr.download}/jr-noicon-windows-x86_64.exe</uri>
+              <outputFileName>jr-windows-x86_64.exe</outputFileName>
+              <sha256>${jr.sha256.windows-x86_64}</sha256>
+            </configuration>
+          </execution>
+          <execution>
+            <id>jr-windows-arm64</id>
+            <phase>generate-resources</phase>
+            <goals><goal>wget</goal></goals>
+            <configuration>
+              <uri>${jr.download}/jr-noicon-windows-arm64.exe</uri>
+              <outputFileName>jr-windows-arm64.exe</outputFileName>
+              <sha256>${jr.sha256.windows-arm64}</sha256>
+            </configuration>
+          </execution>
+          <execution>
+            <id>jr-macos</id>
+            <phase>generate-resources</phase>
+            <goals><goal>wget</goal></goals>
+            <configuration>
+              <uri>${jr.download}/jr-macos</uri>
+              <sha256>${jr.sha256.macos}</sha256>
+            </configuration>
+          </execution>
+          <execution>
+            <id>jr-macos-arm64</id>
+            <phase>generate-resources</phase>
+            <goals><goal>wget</goal></goals>
+            <configuration>
+              <uri>${jr.download}/jr-macos-arm64</uri>
+              <sha256>${jr.sha256.macos-arm64}</sha256>
+            </configuration>
+          </execution>
+          <execution>
+            <id>jr-macos-x86_64</id>
+            <phase>generate-resources</phase>
+            <goals><goal>wget</goal></goals>
+            <configuration>
+              <uri>${jr.download}/jr-macos-x86_64</uri>
+              <sha256>${jr.sha256.macos-x86_64}</sha256>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -154,8 +217,7 @@
   <!-- Release to Maven Central: Maven 3 only, never the default Maven 4 (under Maven 4 the
        central-publishing binding silently uploads nothing, and BUILD SUCCESS still prints):
          mvn clean deploy (with a Maven 3 mvn) -Dorg.name=jarrunner
-       Build the bundled exes first (../jr: mvn package "-Djr.noicon=true" "-Djr.dist=dist-noicon"); the tests
-       fail when they are missing. Confirm a release by fetching it from repo1.maven.org. -->
+       The build downloads the bundled jr binaries from the jr release named in jr.release. Confirm a release by fetching it from repo1.maven.org. -->
   <profiles>
     <profile>
       <id>release</id>

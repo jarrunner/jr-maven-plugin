@@ -1,0 +1,25 @@
+# build output
+target/
+dist/
+*.exe
+*.jar
+*.log
+
+# never committed: working notes and agent files
+prp/
+.claude/
+CLAUDE.md
+
+# credentials
+credentials.json
+*.key
+*.pem
+*.p12
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+nbproject/
+nb-configuration.xml
+nbactions.xml
