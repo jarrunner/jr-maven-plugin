@@ -131,7 +131,7 @@ class MacOutputsTest {
     }
 
     @Test void aConfigTooBigForTheSectionIsRefused() {
-        var e = assertThrows(java.io.IOException.class, () -> MachOStamper.stamp(MacOutputs.jr("arm64"), "x".repeat(20000)));
+        var e = assertThrows(java.io.IOException.class, () -> MachOStamper.stamp(MacOutputs.jr("arm64"), "x".repeat(40000)));
         assertTrue(e.getMessage().contains("holds"), e.getMessage());
     }
 
