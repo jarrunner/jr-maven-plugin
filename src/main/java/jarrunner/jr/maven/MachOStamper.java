@@ -14,7 +14,7 @@ import java.util.List;
 /** Writes an app's config into a macOS jr binary and keeps its ad-hoc signature valid (PRP-36), in plain Java so
  *  it runs on Windows and in CI as well as on a Mac.
  *
- *  jr's macOS build links an empty 16 KB {@code __DATA,__jrc} section into every binary (jr's macos Maven profile). The config
+ *  jr's macOS build links an empty {@code __DATA,__jrc} section (32 KB since PRP-42, 16 KB before) into every binary (jr's macos Maven profile). The config
  *  is written there as UTF-8 plus a NUL, in place, so no offset, size or load command changes. What does change is
  *  the hash of each 4 KB page holding it, which the binary's CodeDirectory records: arm64 macOS refuses to run code
  *  whose pages no longer match. So the matching hash slots are recomputed, in every CodeDirectory of every slice of
@@ -35,13 +35,37 @@ public final class MachOStamper {
 
     /** Returns the binary's bytes with the config written into every slice and the signatures updated. */
     public static byte[] stamp(byte[] binary, String config) throws IOException {
+        return stamp(binary, config, null);
+    }
+
+    /** As {@link #stamp(byte[], String)}, with {@code after} (the app's bundle files, PRP-42; may be null) written at
+     *  the first 16-byte boundary after the config's NUL. jr reads it there (its AppBundle). */
+    public static byte[] stamp(byte[] binary, String config, byte[] after) throws IOException {
         var text = config.getBytes(StandardCharsets.UTF_8);
+        if (after != null) {
+            var all = new byte[afterOffset(text.length) + after.length];
+            System.arraycopy(text, 0, all, 0, text.length);
+            System.arraycopy(after, 0, all, afterOffset(text.length), after.length);
+            text = all;
+        }
         var out = binary.clone();
         var slices = slices(out);
         for (var s : slices) {
             stampSlice(out, s[0], s[1], text);
         }
         return out;
+    }
+
+    /** Where the bytes after a config of this many bytes start: past its NUL, rounded up to 16. */
+    static int afterOffset(int configBytes) {
+        return (configBytes + 1 + 15) & ~15;
+    }
+
+    /** The size of the binary's __DATA,__jrc section (the smallest, in a universal binary). */
+    public static int capacity(byte[] binary) throws IOException {
+        var min = Integer.MAX_VALUE;
+        for (var s : slices(binary)) min = Math.min(min, section(binary, s[0])[1]);
+        return min;
     }
 
     /** The config currently in the binary's first slice, or "" (for tests and for checking a build). */
@@ -52,6 +76,13 @@ public final class MachOStamper {
         var end = start;
         while (end < start + sect[1] && binary[end] != 0) end++;
         return new String(binary, start, end - start, StandardCharsets.UTF_8);
+    }
+
+    /** The whole __DATA,__jrc section of the first slice (for tests). */
+    static byte[] sectionBytes(byte[] binary) throws IOException {
+        var s = slices(binary).get(0);
+        var sect = section(binary, s[0]);
+        return java.util.Arrays.copyOfRange(binary, s[0] + sect[0], s[0] + sect[0] + sect[1]);
     }
 
     /** {offset, size} of each thin Mach-O inside the file: the whole file, or each architecture of a fat file. */
@@ -76,7 +107,7 @@ public final class MachOStamper {
     private static void stampSlice(byte[] b, int base, int size, byte[] text) throws IOException {
         var sect = section(b, base);
         if (text.length + 1 > sect[1]) {
-            throw new IOException("the config is " + text.length + " bytes; jr's " + SEGMENT + "," + SECTION
+            throw new IOException("the config (with any app files after it) is " + text.length + " bytes; jr's " + SEGMENT + "," + SECTION
                     + " section holds " + (sect[1] - 1));
         }
         var start = base + sect[0];

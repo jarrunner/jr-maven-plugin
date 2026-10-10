@@ -2,6 +2,7 @@ package jarrunner.jr.maven;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -15,7 +16,7 @@ import java.util.TreeMap;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
 
-/** The files a release publishes, in one folder: the exe(s), the jar under the name its url
+/** The files a release publishes, in one folder: the exe(s), the macOS binary and app zip, the jar under the name its url
  *  downloads, version.txt, any extra files, SHA256SUMS, and the update file -Xjr:update reads
  *  (jr's update format 1). The jar is copied from the bytes the exe's sha256 was taken from, so
  *  what the exe expects and what the release carries cannot disagree. */
@@ -34,7 +35,7 @@ final class ReleaseWriter {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
     }
 
-    void write(Map<String, File> exes, File jar, String jarName, List<File> extra, File mergeFrom) throws Exception {
+    void write(Map<String, File> exes, Map<String, File> mac, File jar, String jarName, List<File> extra, File mergeFrom) throws Exception {
         for (var f : extra) {
             if (!f.isFile()) throw new MojoExecutionException("releaseFiles: " + f + " does not exist; build it before this goal runs");
         }
@@ -43,12 +44,13 @@ final class ReleaseWriter {
         }
         dir.mkdirs();
         for (var exe : exes.values()) copy(exe, exe.getName());
+        for (var f : mac.values()) copy(f, f.getName());
         if (jar != null) copy(jar, jarName);
         for (var f : extra) copy(f, f.getName());
         Files.writeString(new File(dir, "version.txt").toPath(), version);
         writeSums();
         var update = new File(dir, name + ".update.json");
-        Files.writeString(update.toPath(), ExeMojo.mapper().writeValueAsString(updateFile(exes, mergeFrom)) + "\n");
+        Files.writeString(update.toPath(), ExeMojo.mapper().writeValueAsString(updateFile(exes, mac, mergeFrom)) + "\n");
         log.info("release: " + dir + " (update file " + update.getName() + ")");
     }
 
@@ -67,7 +69,7 @@ final class ReleaseWriter {
         Files.writeString(new File(dir, "SHA256SUMS").toPath(), b);
     }
 
-    private JsonNode updateFile(Map<String, File> exes, File mergeFrom) throws Exception {
+    private JsonNode updateFile(Map<String, File> exes, Map<String, File> mac, File mergeFrom) throws Exception {
         var m = ExeMojo.mapper();
         var old = mergeFrom != null && mergeFrom.isFile() ? m.readTree(mergeFrom) : m.createObjectNode();
         if (old.has("format") && old.get("format").asInt() != 1) {
@@ -83,6 +85,14 @@ final class ReleaseWriter {
         var exe = release.putObject("exe");
         for (var e : exes.entrySet()) {
             exe.putObject(platform(e.getKey())).put("sha256", sha256(e.getValue()))
+                    .putArray("urls").add(baseUrl + e.getValue().getName());
+        }
+        // macOS (PRP-42): "exe/macos-<arch>" is a bare binary, "app/macos-<arch>" an app's zip, which jr swaps in whole
+        for (var e : mac.entrySet()) {
+            var slash = e.getKey().indexOf('/');
+            var section = release.has(e.getKey().substring(0, slash)) ? (ObjectNode) release.get(e.getKey().substring(0, slash))
+                    : release.putObject(e.getKey().substring(0, slash));
+            section.putObject(e.getKey().substring(slash + 1)).put("sha256", sha256(e.getValue()))
                     .putArray("urls").add(baseUrl + e.getValue().getName());
         }
         if (old.get("releases") instanceof ArrayNode olds) {

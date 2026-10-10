@@ -50,6 +50,86 @@ class MacOutputsTest {
         verifySignatures(twice);
     }
 
+    /** PRP-42: a release lists the macOS binary under exe and the app's zip under app, so -Xjr:update finds them. */
+    @Test void releaseListsTheBinaryAndTheAppZipInTheUpdateFile() throws Exception {
+        var m = mojo(TestApp.jar(dir));
+        m.source = "url";
+        m.jarUrl = "https://github.com/example/hello/releases/download/v1.2.3/hello.jar";
+        m.releaseDirectory = dir.resolve("out/release").toFile();
+        m.macosForms = List.of("binary", "app");
+        m.execute();
+        var rel = m.releaseDirectory.toPath();
+        var u = ExeMojo.mapper().readTree(rel.resolve("hello.update.json").toFile()).path("releases").get(0);
+        var bin = u.path("exe").path("macos-universal");
+        assertEquals(ReleaseWriter.sha256(rel.resolve("hello").toFile()), bin.path("sha256").asText());
+        assertEquals("https://github.com/example/hello/releases/download/v1.2.3/hello", bin.path("urls").get(0).asText());
+        var app = u.path("app").path("macos-universal");
+        assertEquals(ReleaseWriter.sha256(rel.resolve("hello-1.2.3-SNAPSHOT-macos.zip").toFile()), app.path("sha256").asText());
+        assertTrue(app.path("urls").get(0).asText().endsWith("/hello-1.2.3-SNAPSHOT-macos.zip"), app.toString());
+        var sums = Files.readString(rel.resolve("SHA256SUMS"));
+        assertTrue(sums.contains("  hello\n") && sums.contains("  hello-1.2.3-SNAPSHOT-macos.zip\n"), sums);
+    }
+
+    /** PRP-42: the binary carries its app's bundle files after the config, in the layout jr's AppBundle reads, and
+     *  their Info.plist is byte for byte the one the app form writes (so jr leaves a plugin-built bundle alone). */
+    @Test void theBinaryCarriesItsAppsBundleFiles() throws Exception {
+        var m = mojo(TestApp.jar(dir));
+        m.macosArchitecture = "arm64";
+        m.icon = new File("src/test/resources/jr-icon.ico");
+        m.productName = "Hello World";
+        m.macosForms = List.of("binary", "app");
+        m.execute();
+        var sect = MachOStamper.sectionBytes(Files.readAllBytes(dir.resolve("out/macos/hello")));
+        var le = ByteBuffer.wrap(sect).order(ByteOrder.LITTLE_ENDIAN);
+        var end = 0;
+        while (sect[end] != 0) end++;
+        var at = MachOStamper.afterOffset(end);
+        assertEquals("jrapp1\0\0", new String(sect, at, 8, java.nio.charset.StandardCharsets.US_ASCII));
+        at += 8;
+        var files = new java.util.LinkedHashMap<String, byte[]>();
+        var n = le.getInt(at);
+        assertEquals("Hello World.app", new String(sect, at + 4, n, java.nio.charset.StandardCharsets.UTF_8));
+        at += 4 + n;
+        while ((n = le.getInt(at)) != 0) {
+            var path = new String(sect, at + 4, n, java.nio.charset.StandardCharsets.UTF_8);
+            at += 4 + n;
+            var len = le.getInt(at);
+            files.put(path, java.util.Arrays.copyOfRange(sect, at + 4, at + 4 + len));
+            at += 4 + len;
+        }
+        assertEquals(List.of("Contents/Info.plist", "Contents/PkgInfo", "Contents/Resources/hello.icns"), List.copyOf(files.keySet()));
+        var app = dir.resolve("out/macos/Hello World.app/Contents");
+        assertArrayEquals(Files.readAllBytes(app.resolve("Info.plist")), files.get("Contents/Info.plist"));
+        var icns = files.get("Contents/Resources/hello.icns");
+        assertEquals("icns", new String(icns, 0, 4, java.nio.charset.StandardCharsets.US_ASCII));
+        assertEquals(icns.length, ByteBuffer.wrap(icns).getInt(4));
+        assertEquals(1, icnsEntries(icns), "one image, scaled by macOS");
+        System.out.println("embedded icns: " + icns.length + " bytes, type " + new String(icns, 8, 4, java.nio.charset.StandardCharsets.US_ASCII));
+    }
+
+    /** Not a check: writes a real section (config + bundle files) to -Djr.slotOut for jr's own tests of AppBundle on
+     *  Linux (prp/42-prp.03.install-test.sh). Skipped unless the property is set. */
+    @Test void dumpSectionForJrTests() throws Exception {
+        var outFile = System.getProperty("jr.slotOut");
+        org.junit.jupiter.api.Assumptions.assumeTrue(outFile != null);
+        var m = mojo(TestApp.jar(dir));
+        m.macosArchitecture = "arm64";
+        m.icon = new File("src/test/resources/jr-icon.ico");
+        m.productName = "Hello World";
+        m.appVersion = System.getProperty("jr.slotVersion", "1.0");
+        m.javaArgs = "-version";
+        m.updateUrl = "https://localhost:8443/app.update.json";
+        m.macosForms = List.of("binary");
+        m.execute();
+        Files.write(Path.of(outFile), MachOStamper.sectionBytes(Files.readAllBytes(dir.resolve("out/macos/hello"))));
+    }
+
+    private static int icnsEntries(byte[] icns) {
+        var count = 0;
+        for (var at = 8; at + 8 <= icns.length; at += ByteBuffer.wrap(icns).getInt(at + 4)) count++;
+        return count;
+    }
+
     @Test void aConfigTooBigForTheSectionIsRefused() {
         var e = assertThrows(java.io.IOException.class, () -> MachOStamper.stamp(MacOutputs.jr("arm64"), "x".repeat(20000)));
         assertTrue(e.getMessage().contains("holds"), e.getMessage());

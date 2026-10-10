@@ -133,7 +133,7 @@ public final class ExeMojo extends AbstractMojo {
                 stamper.manifest = manifest;
                 exes = stamper.run(archs(), installDir);
             }
-            var macFiles = plats.contains("macos") ? macos() : List.<File>of();
+            var macFiles = plats.contains("macos") ? macos() : Map.<String, File>of();
             if (release != null ? release : source.equals("url")) writeRelease(exes, macFiles);
         } catch (MojoExecutionException e) {
             throw e;
@@ -164,8 +164,9 @@ public final class ExeMojo extends AbstractMojo {
         return c;
     }
 
-    /** The macOS outputs (PRP-36); returns the files a release publishes (the binary, the app's zip). */
-    private List<File> macos() throws Exception {
+    /** The macOS outputs (PRP-36); returns what a release publishes, keyed by the update file's section and platform:
+     *  "exe/macos-<arch>" for the binary, "app/macos-<arch>" for the app's zip (PRP-42). */
+    private Map<String, File> macos() throws Exception {
         var mac = new MacOutputs(getLog(), outputDirectory, name);
         mac.version = appVersion;
         mac.displayName = macosDisplayName != null ? macosDisplayName : productName != null ? productName : name;
@@ -174,7 +175,7 @@ public final class ExeMojo extends AbstractMojo {
         if (macosInfoPlist != null) mac.extraPlist.putAll(macosInfoPlist);
         var arch = macosArchitecture == null ? "universal" : macosArchitecture;
         var compact = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
-        var files = new ArrayList<File>();
+        var files = new LinkedHashMap<String, File>();
         for (var form : MacOutputs.forms(macosForms)) {
             if (form.equals("binary")) {
                 // source=path with no jarPath: on a Mac the build's own jar, as on Windows; built elsewhere, that
@@ -185,7 +186,7 @@ public final class ExeMojo extends AbstractMojo {
                 if (jarPathOverride != null) getLog().info("macOS binary: expects " + jar.getName() + " beside it (set jarPath, or source maven/url, to change that)");
                 var cfg = compact.writeValueAsString(config());
                 jarPathOverride = null;
-                files.add(mac.binary(arch, cfg));
+                files.put("exe/" + MacOutputs.platform(arch), mac.binary(arch, cfg));
             } else {
                 // The jar never goes inside the app (user, 2026-10-09): as on Windows, source=path names the build's
                 // own jar (or jarPath), maven/url are downloaded by jr, so the jar is updated without the bundle.
@@ -194,7 +195,7 @@ public final class ExeMojo extends AbstractMojo {
                     getLog().warn("macOS app: source=path names " + jar.getAbsolutePath() + ", a path on this build machine;"
                             + " for an app that runs on a Mac, use source maven or url, or set jarPath");
                 }
-                files.add(mac.app(arch, compact.writeValueAsString(config())));
+                files.put("app/" + MacOutputs.platform(arch), mac.app(arch, compact.writeValueAsString(config())));
             }
         }
         return files;
@@ -224,19 +225,17 @@ public final class ExeMojo extends AbstractMojo {
         return m;
     }
 
-    private void writeRelease(Map<String, File> exes, List<File> macFiles) throws Exception {
+    private void writeRelease(Map<String, File> exes, Map<String, File> macFiles) throws Exception {
         var base = releaseBaseUrl;
         if (base == null && resolvedJarUrl != null) base = resolvedJarUrl.substring(0, resolvedJarUrl.lastIndexOf('/') + 1);
         if (base == null || !base.startsWith("https://")) {
             throw new MojoExecutionException("release needs an https releaseBaseUrl (or a jarUrl to take its folder from)");
         }
         var withJar = javaArgs == null;
-        // macOS files are published and listed in SHA256SUMS, but not in the update file: self-update is Windows-only
         var extra = new ArrayList<File>(releaseFiles == null ? List.of() : releaseFiles);
-        extra.addAll(macFiles);
         var jarName = resolvedJarUrl != null && source.equals("url") ? resolvedJarUrl.substring(resolvedJarUrl.lastIndexOf('/') + 1) : jar.getName();
         new ReleaseWriter(getLog(), releaseDirectory, name, appId, appVersion, updateChannel, base)
-                .write(exes, withJar ? jar : null, jarName, extra, updateMergeFrom);
+                .write(exes, macFiles, withJar ? jar : null, jarName, extra, updateMergeFrom);
     }
 
     private List<String> archs() {

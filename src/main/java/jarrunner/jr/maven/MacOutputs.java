@@ -3,6 +3,7 @@ package jarrunner.jr.maven;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
@@ -58,11 +59,65 @@ final class MacOutputs {
         }
     }
 
+    /** The update file's platform key for an architecture (PRP-42): macos-universal, macos-arm64 or macos-x86_64, the
+     *  keys jr's -Xjr:update tries on a Mac (universal first, then the Mac's own architecture). */
+    static String platform(String arch) {
+        return "macos-" + arch;
+    }
+
+    /** jr for arch with the config and, after it, the app's bundle files (PRP-42), so the binary can write its own
+     *  .app (jr -Xjr:install) and rewrite it after an update. The icon goes in as one 512 px PNG if it fits, else 256 px,
+     *  else not at all; the Info.plist names it either way, so it is the same Info.plist the app form writes. */
+    private byte[] stamped(String arch, String config) throws Exception {
+        var jr = jr(arch);
+        var room = MachOStamper.capacity(jr) - MachOStamper.afterOffset(config.getBytes(StandardCharsets.UTF_8).length) - 1;
+        var plist = infoPlist(icon == null ? null : name + ".icns");
+        for (var size : icon == null ? new int[] {0} : new int[] {512, 256, 0}) {
+            var files = bundleFiles(plist, size == 0 ? null : IcnsWriter.single(icon, size));
+            if (files.length <= room) {
+                if (icon != null && size != 512) {
+                    log.warn("macOS: the icon is " + (size == 0 ? "left out of" : "256 px in") + " the binary, to fit its "
+                            + MachOStamper.capacity(jr) / 1024 + " KB section (a smaller PNG, such as a 512 px palette PNG, fits at 512)");
+                }
+                return MachOStamper.stamp(jr, config, files);
+            }
+        }
+        log.warn("macOS: the app's bundle files do not fit beside the config, so this binary cannot install its own .app");
+        return MachOStamper.stamp(jr, config);
+    }
+
+    /** The section layout jr's AppBundle reads: "jrapp1\0\0", the bundle's folder name, then (path, data) entries
+     *  relative to the bundle, ending with a zero length; every length a little-endian u32. */
+    private byte[] bundleFiles(String plist, byte[] icns) throws IOException {
+        var out = new java.io.ByteArrayOutputStream();
+        out.write("jrapp1\0\0".getBytes(StandardCharsets.US_ASCII));
+        var bundle = (displayName + ".app").getBytes(StandardCharsets.UTF_8);
+        out.write(u32(bundle.length));
+        out.write(bundle);
+        bundleEntry(out, "Contents/Info.plist", plist.getBytes(StandardCharsets.UTF_8));
+        bundleEntry(out, "Contents/PkgInfo", "APPL????".getBytes(StandardCharsets.US_ASCII));
+        if (icns != null) bundleEntry(out, "Contents/Resources/" + name + ".icns", icns);
+        out.write(u32(0));
+        return out.toByteArray();
+    }
+
+    private static void bundleEntry(java.io.ByteArrayOutputStream out, String path, byte[] data) throws IOException {
+        var p = path.getBytes(StandardCharsets.UTF_8);
+        out.write(u32(p.length));
+        out.write(p);
+        out.write(u32(data.length));
+        out.write(data);
+    }
+
+    private static byte[] u32(int v) {
+        return java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN).putInt(v).array();
+    }
+
     /** The plain binary; returns it. */
     File binary(String arch, String config) throws Exception {
         dir.mkdirs();
         var out = new File(dir, name);
-        Files.write(out.toPath(), MachOStamper.stamp(jr(arch), config));
+        Files.write(out.toPath(), stamped(arch, config));
         executable(out.toPath());
         log.info("macOS binary (" + arch + "): " + out);
         return out;
@@ -79,7 +134,7 @@ final class MacOutputs {
         macos.mkdirs();
         resources.mkdirs();
         var exe = new File(macos, name);
-        Files.write(exe.toPath(), MachOStamper.stamp(jr(arch), config));
+        Files.write(exe.toPath(), stamped(arch, config));
         executable(exe.toPath());
         String iconFile = null;
         if (icon != null) {
