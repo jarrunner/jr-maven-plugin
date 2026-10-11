@@ -1,6 +1,21 @@
+<p align="center"><img src="https://jarrunner.github.io/jr-icon.svg" width="96" alt="jr"></p>
+
 # jr-maven-plugin
 
-Builds a [jr](https://github.com/jarrunner/jr) launcher exe for a Java app as part of its Maven build: `io.github.jarrunner:jr-maven-plugin`, goal `jr:exe`, bound to `package` by default.
+Give your Java app its own launcher from `mvn package`: a Windows exe and a macOS binary or app, with your name, icon and version, run by [jr](https://github.com/jarrunner/jr).
+
+- **One file to ship.** The exe carries the app's settings (Java version, JVM options, arguments). jr checks them while the build runs, so a bad setting fails the build rather than your user's launch.
+- **Java and the jar arrive by themselves.** jr finds or downloads Java. A release exe can fetch its jar on first run and check it against the SHA-256 baked in.
+- **Updates.** With an `updateUrl`, `myapp -Xjr:update` moves the app to its next version, even while it runs.
+- **Windows and macOS from one build**, on your machine or in CI.
+
+**Try it:** add the plugin block below after your shade plugin and run `mvn package`. `target/jr/<artifactId>.exe` runs the jar you just built. The [tutorial](docs/tutorial.md) takes you from there to releases, updates and GitHub Actions.
+
+[Tutorial](docs/tutorial.md) · [Parameters](#parameters) · [jr](https://github.com/jarrunner/jr) · [jr-apputils](https://github.com/jarrunner/jr-apputils) · [jarrunner.github.io](https://jarrunner.github.io)
+
+## How it works
+
+The plugin builds a [jr](https://github.com/jarrunner/jr) launcher exe for a Java app as part of its Maven build: `io.github.jarrunner:jr-maven-plugin`, goal `jr:exe`, bound to `package` by default.
 
 It hashes the app's shaded jar (SHA-256 and CRC32), writes the jrc-json, and has jr itself check and bake that config, the icon and the version info into a copy of the jr exe bundled in the plugin. The result is one exe that carries everything it needs: its config cannot be overridden by a file beside it, and a release exe fetches its jar on first run, verifies it, and updates itself with `-Xjr:update`.
 
