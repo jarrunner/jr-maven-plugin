@@ -37,7 +37,7 @@ So **a Windows machine, or a `windows-latest` CI runner, builds everything in on
 </plugin>
 ```
 
-- `jvmMode` `dll` runs the JVM inside the exe: one process, the app's own name in Task Manager, and on macOS the app's own Dock tile and "open with" events. (On macOS it is new: test it, and leave `jvmMode` out to start Java as a child as before.)
+- `jvmMode` `dll` runs the JVM inside the exe: one process, the app's own name in Task Manager, and on macOS the app's own Dock tile and "open with" events. (On macOS it is the default from jr 1.4.0-beta.3; `exe` starts Java as a child instead.)
 - Put `updateUrl` somewhere you control and can move, such as a GitHub Pages site. A `releases/latest/download/...` url works too, but then a pre-release can never have its own channel.
 - Version `1.2.0-SNAPSHOT` comes from the Central snapshot repository. Add it once per machine in `~/.m2/settings.xml` as both a `<repository>` and a `<pluginRepository>`: `https://central.sonatype.com/repository/maven-snapshots/`.
 
