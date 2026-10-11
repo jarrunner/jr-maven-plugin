@@ -44,7 +44,7 @@ final class ReleaseWriter {
         }
         dir.mkdirs();
         for (var exe : exes.values()) copy(exe, exe.getName());
-        for (var f : mac.values()) copy(f, f.getName());
+        for (var e : mac.entrySet()) copy(e.getValue(), releaseName(e.getKey(), e.getValue()));
         if (jar != null) copy(jar, jarName);
         for (var f : extra) copy(f, f.getName());
         Files.writeString(new File(dir, "version.txt").toPath(), version);
@@ -82,7 +82,17 @@ final class ReleaseWriter {
         var releases = root.putArray("releases");
         var release = releases.addObject().put("version", version)
                 .put("released", Instant.now().truncatedTo(ChronoUnit.SECONDS).toString());
-        var exe = release.putObject("exe");
+        // The same version from an earlier run of this build (one run per jar: Windows, then each Mac architecture,
+        // when a jar carries one platform's natives): keep its platforms, and add or replace this run's.
+        if (old.get("releases") instanceof ArrayNode olds) {
+            for (var r : olds) {
+                if (!version.equals(r.path("version").asText())) continue;
+                for (var section : List.of("exe", "app")) {
+                    if (r.get(section) instanceof ObjectNode s) release.set(section, s.deepCopy());
+                }
+            }
+        }
+        var exe = release.has("exe") ? (ObjectNode) release.get("exe") : release.putObject("exe");
         for (var e : exes.entrySet()) {
             exe.putObject(platform(e.getKey())).put("sha256", sha256(e.getValue()))
                     .putArray("urls").add(baseUrl + e.getValue().getName());
@@ -93,12 +103,22 @@ final class ReleaseWriter {
             var section = release.has(e.getKey().substring(0, slash)) ? (ObjectNode) release.get(e.getKey().substring(0, slash))
                     : release.putObject(e.getKey().substring(0, slash));
             section.putObject(e.getKey().substring(slash + 1)).put("sha256", sha256(e.getValue()))
-                    .putArray("urls").add(baseUrl + e.getValue().getName());
+                    .putArray("urls").add(baseUrl + releaseName(e.getKey(), e.getValue()));
         }
         if (old.get("releases") instanceof ArrayNode olds) {
             for (var r : olds) if (!version.equals(r.path("version").asText())) releases.add(r);
         }
         return root;
+    }
+
+    /** A macOS file's name in the release: as built for universal; for one architecture, with it added (myapp-macos-arm64,
+     *  myapp-1.0-macos-arm64.zip), so both architectures' files fit in one release. key is "exe/macos-arm64" etc. */
+    static String releaseName(String key, File f) {
+        var platform = key.substring(key.indexOf('/') + 1);
+        var n = f.getName();
+        if (platform.equals("macos-universal")) return n;
+        var arch = platform.substring("macos-".length());
+        return n.endsWith("-macos.zip") ? n.substring(0, n.length() - ".zip".length()) + "-" + arch + ".zip" : n + "-macos-" + arch;
     }
 
     /** jr's platform keys: windows-x86_64 and windows-aarch64. */

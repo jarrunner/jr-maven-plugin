@@ -77,6 +77,38 @@ class ReleaseTest {
         assertEquals("first", u.path("releases").get(2).path("notes").asText());
     }
 
+    @Test void oneRunPerMacArchitectureMergesIntoOneRelease() throws Exception {
+        // one jar per architecture (JavaFX natives): one build run each, the second merging the first's update file
+        var arm = urlMojo();
+        arm.platforms = List.of("windows", "macos");
+        arm.macosArchitecture = "arm64";
+        arm.macosForms = List.of("binary", "app");
+        arm.execute();
+        var first = dir.resolve("first.json");
+        Files.copy(arm.releaseDirectory.toPath().resolve("hello.update.json"), first);
+
+        var intel = urlMojo();
+        intel.platforms = List.of("macos");
+        intel.macosArchitecture = "x86_64";
+        intel.outputDirectory = dir.resolve("out-intel").toFile();
+        intel.releaseDirectory = dir.resolve("out-intel/release").toFile();
+        intel.updateMergeFrom = first.toFile();
+        intel.execute();
+
+        assertTrue(List.of(arm.releaseDirectory.list()).containsAll(List.of("hello-macos-arm64", "hello-1.1.0-macos-arm64.zip")));
+        assertTrue(List.of(intel.releaseDirectory.list()).contains("hello-macos-x86_64"));
+        var u = ExeMojo.mapper().readTree(intel.releaseDirectory.toPath().resolve("hello.update.json").toFile());
+        assertEquals(1, u.path("releases").size(), "one release, not one per run");
+        var r = u.path("releases").get(0);
+        var base = "https://github.com/example/hello/releases/download/v1.1.0/";
+        assertEquals(base + "hello.exe", r.path("exe").path("windows-x86_64").path("urls").get(0).asText());
+        assertEquals(base + "hello-macos-arm64", r.path("exe").path("macos-arm64").path("urls").get(0).asText());
+        assertEquals(base + "hello-macos-x86_64", r.path("exe").path("macos-x86_64").path("urls").get(0).asText());
+        assertEquals(base + "hello-1.1.0-macos-arm64.zip", r.path("app").path("macos-arm64").path("urls").get(0).asText());
+        assertEquals(ReleaseWriter.sha256(intel.releaseDirectory.toPath().resolve("hello-macos-x86_64").toFile()),
+                r.path("exe").path("macos-x86_64").path("sha256").asText());
+    }
+
     @Test void aMissingExtraFileFailsTheBuild() throws Exception {
         var m = urlMojo();
         m.releaseFiles = List.of(dir.resolve("not-built-yet.jar").toFile());
