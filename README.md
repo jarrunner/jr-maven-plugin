@@ -84,4 +84,4 @@ Parameters: `release` (`jr.release`), `releaseDirectory`, `releaseBaseUrl` (`jr.
 
 The jrc-json it writes is kept beside the exe as `<name>.jrc.json`, for review; the exe never reads it from there.
 
-The app receives its whole config as `-Dio.github.jarrunner.jr.<path>` properties; [jr-runtime](https://github.com/jarrunner/jr-runtime) reads them and offers an update check.
+The app receives its whole config as `-Dio.github.jarrunner.jr.<path>` properties; [jr-apputils](https://github.com/jarrunner/jr-apputils) reads them (`JrApp`) and gives the app its own update and install commands.

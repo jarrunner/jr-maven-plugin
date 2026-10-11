@@ -74,7 +74,7 @@ curl.exe -fLo myapp.exe https://github.com/OWNER/REPO/releases/latest/download/m
 .\myapp.exe install
 ```
 
-and update with `myapp update`, which your app implements in a few lines with [updateutils](https://github.com/jarrunner/updateutils), or directly with `myapp -Xjr:update`.
+and update with `myapp update`, which your app implements in a few lines with [jr-apputils](https://github.com/jarrunner/jr-apputils), or directly with `myapp -Xjr:update`.
 
 **Betas:** set `updateChannel` to `beta` for the beta build and publish its release as a GitHub pre-release. The update file then gains `"beta": "<version>"`, `stable` stays where it was, and installed stable copies are never offered the beta.
 
