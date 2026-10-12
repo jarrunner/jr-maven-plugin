@@ -19,7 +19,7 @@ The plugin builds a [jr](https://github.com/jarrunner/jr) launcher exe for a Jav
 
 It hashes the app's shaded jar (SHA-256 and CRC32), writes the jrc-json, and has jr itself check and bake that config, the icon and the version info into a copy of the jr exe bundled in the plugin. The result is one exe that carries everything it needs: its config cannot be overridden by a file beside it, and a release exe fetches its jar on first run, verifies it, and updates itself with `-Xjr:update`.
 
-The Windows exes are stamped through Windows' own resource calls, so they are built on Windows (on another OS that part logs a warning and is skipped); the macOS outputs (see below) are built on any OS. On Maven Central as `io.github.jarrunner:jr-maven-plugin:1.2.0`, which bundles jr 1.4.0. The plugin bundles the jr binaries of one jr release, without the jr icon: the build downloads them from [jr's releases](https://github.com/jarrunner/jr/releases) and checks each against a SHA-256 sum written in the pom (`jr.release` and the `jr.sha256.*` properties), so `mvn install` needs nothing else.
+The Windows exes are stamped through Windows' own resource calls, so they are built on Windows (on another OS that part logs a warning and is skipped); the macOS outputs (see below) are built on any OS. On Maven Central as `io.github.jarrunner:jr-maven-plugin:1.3.0`, which bundles jr 1.4.1. The plugin bundles the jr binaries of one jr release, without the jr icon: the build downloads them from [jr's releases](https://github.com/jarrunner/jr/releases) and checks each against a SHA-256 sum written in the pom (`jr.release` and the `jr.sha256.*` properties), so `mvn install` needs nothing else.
 
 New to it? [docs/tutorial.md](docs/tutorial.md) walks through a Windows exe and a macOS binary from one build, icons for both, releases and updates, and GitHub Actions.
 
@@ -31,7 +31,7 @@ Declare it after the shade plugin, so it hashes the jar shade just wrote:
 <plugin>
   <groupId>io.github.jarrunner</groupId>
   <artifactId>jr-maven-plugin</artifactId>
-  <version>1.2.0</version>
+  <version>1.3.0</version>
   <executions><execution><goals><goal>exe</goal></goals></execution></executions>
   <configuration>
     <icon>${project.basedir}/app.ico</icon>

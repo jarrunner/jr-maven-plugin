@@ -4,7 +4,7 @@
 
   <groupId>io.github.jarrunner</groupId>
   <artifactId>jr-maven-plugin</artifactId>
-  <version>1.3.0-SNAPSHOT</version>
+  <version>1.3.0</version>
   <packaging>maven-plugin</packaging>
 
   <name>jr-maven-plugin</name>
@@ -44,12 +44,12 @@
          downloaded at build time and checked against these SHA-256 sums, copied from that release's SHA256SUMS.
          The Windows exes are the jr-noicon-* builds: an app exe carries an icon only when its own pom names one.
          To move to a new jr release, change jr.release and the five sums together. -->
-    <jr.release>1.4.0</jr.release>
-    <jr.sha256.windows-x86_64>f81dedd503148480f4ef1f81a8fdfe53e8cf5b5cb7878551db33af7c0075caf0</jr.sha256.windows-x86_64>
-    <jr.sha256.windows-arm64>381d3c4067b373168af3e15405e4d69092468eb9882a4ea21658e0949e37b755</jr.sha256.windows-arm64>
-    <jr.sha256.macos>4d3f639022150b771a2a694110ff8283a44fd808f52923c9253da2d8316b50c8</jr.sha256.macos>
-    <jr.sha256.macos-arm64>78844592920d4017c0b13d0c44e1ec1e5d7180f0a8196180040ad4a679b08627</jr.sha256.macos-arm64>
-    <jr.sha256.macos-x86_64>26cc8c6c7ae6251d0dbe37e93815a23126c4cae839d669a8a223b9aebe41ab21</jr.sha256.macos-x86_64>
+    <jr.release>1.4.1</jr.release>
+    <jr.sha256.windows-x86_64>442398e9dd28ebdc25593a673ce53aa1457bfbf44f9cf8fef35e947160b8c88b</jr.sha256.windows-x86_64>
+    <jr.sha256.windows-arm64>05734dfa566f797dafa89c76ab12e8f0c996d3930032804feaed5f39bfa9d35d</jr.sha256.windows-arm64>
+    <jr.sha256.macos>a6bb34b88ce6616942fbe461203ef1e90bb1a79991990332c1a228b721a979b0</jr.sha256.macos>
+    <jr.sha256.macos-arm64>fe1a7e8e96e693055c447734083386256fff927fedb4c68430c2e49485eac25d</jr.sha256.macos-arm64>
+    <jr.sha256.macos-x86_64>90bef77d7de7885326d27631c2f83d62a341e024dd48d8fcdc622bc216bccd4f</jr.sha256.macos-x86_64>
     <jr.download>https://github.com/jarrunner/jr/releases/download/v${jr.release}</jr.download>
     <jr.dist>${project.build.directory}/jr-bin</jr.dist>
   </properties>

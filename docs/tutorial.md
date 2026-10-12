@@ -21,7 +21,7 @@ So **a Windows machine, or a `windows-latest` CI runner, builds everything in on
 <plugin>
   <groupId>io.github.jarrunner</groupId>
   <artifactId>jr-maven-plugin</artifactId>
-  <version>1.2.0</version>
+  <version>1.3.0</version>
   <executions><execution><goals><goal>exe</goal></goals></execution></executions>
   <configuration>
     <platforms><platform>windows</platform><platform>macos</platform></platforms>
