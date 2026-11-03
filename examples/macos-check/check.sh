@@ -38,10 +38,13 @@ LSR=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.
 echo "--- Launch Services entries for the installed app:"
 "$LSR" -dump | grep -n -i -E "Example Recorder|macos-check" | head -12 || true
 echo "---"
-T=$(mktemp -d); touch "$T/x.md" "$T/x.exnote"
+T=$(mktemp -d); touch "$T/x.md" "$T/x.exnote" "$T/x.exnone"
 offered() { osascript -l JavaScript -e "ObjC.import(\"AppKit\"); var u=\$.NSWorkspace.sharedWorkspace.URLsForApplicationsToOpenURL(\$.NSURL.fileURLWithPath(\"$1\")); var r=[]; for (var i=0;i<u.count;i++) r.push(ObjC.unwrap(u.objectAtIndex(i).path)); r.join(\"\n\")"; }
-offered "$T/x.md" | grep -q "Example Recorder.app" || { offered "$T/x.md"; fail "Open With does not offer the app for a .md file"; }
+offered "$T/x.md" | grep -q "$H/Applications/Example Recorder.app" || { offered "$T/x.md"; fail "Open With does not offer the app for a .md file"; }
 ok "Launch Services offers the installed app for a .md file"
-offered "$T/x.exnote" | grep -q "Example Recorder.app" || { offered "$T/x.exnote"; fail "Open With does not offer the app for its own file type"; }
+offered "$T/x.exnote" | grep -q "$H/Applications/Example Recorder.app" || { offered "$T/x.exnote"; fail "Open With does not offer the app for its own file type"; }
 ok "Launch Services offers the installed app for its own imported type"
+# the control: an extension the app did not declare must NOT be offered it, or the checks above prove nothing
+! offered "$T/x.exnone" | grep -q "$H/Applications/Example Recorder.app" || fail "Open With offers the app for a file type it never declared"
+ok "an undeclared file type is not offered the app (the control)"
 echo "all checks passed"
