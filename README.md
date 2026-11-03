@@ -99,6 +99,20 @@ mvn -Djr.installDir=<dir> package    also copies the exe to <dir>
      ```
 
   An app where nothing is declared or suspected needs nothing in the pom. `macosPermissionsCheck` (`jr.macosPermissionsCheck`): `auto` (default), `fail` (every build stops) or `warn` (nothing stops). The build also writes `target/jr/macos/<name>.permissions.txt`, a plain-text list of what the app will ask for, whose sentence, and what is turned on by hand, to hand to whoever approves the app on a Mac. A scan is a nudge, never a proof: it cannot see reflection, native code or the folders a user picks, so check each prompt on a real Mac, with the app started by `open` and not from a terminal.
+- **File types (`macosDocumentTypes`, `macosImportedTypes`).** So Finder offers the app in Open With and it can be made the default for a kind of file, declare the kinds it opens; the plugin writes `CFBundleDocumentTypes` (and `UTImportedTypeDeclarations`) into the Info.plist of both forms. A `documentType` has a `name`, a `role` (`Editor` default, `Viewer`), a `rank` (`Alternate` default: offered in Open With; `Default`: preferred over an alternate; `Owner`) and `utis` and/or `extensions`. A type macOS has no name for (an extension no system type covers) is named by an `importedType` (`identifier`, `description`, `conformsTo`, default `public.data`, and `extensions`), and a `documentType` lists its identifier among its `utis`:
+
+  ```xml
+  <macosDocumentTypes>
+    <documentType>
+      <name>Markdown document</name>
+      <rank>Default</rank>
+      <utis><uti>net.daringfireball.markdown</uti></utis>
+    </documentType>
+  </macosDocumentTypes>
+  ```
+
+  Declaring only makes the app offered. Receiving the file that was opened is the app's own job (in Java, `Desktop.setOpenFileHandler`; not yet tried under jr). Making it the default is the person's choice in Finder (Get Info, Open with, Change All), or a Launch Services setting.
+- Tested on a real macOS runner: the `macos` workflow builds `examples/macos-check` and `check.sh` verifies the Info.plist keys, the signature, `-Xjr:install`, and that Launch Services offers the installed app for its declared file types and not for an undeclared one. A runner has no person at its screen, so a permission prompt itself is not seen there.
 - With `source=path` and no `jarPath`, a `binary` built on a Mac runs the build's own jar, as on Windows. Built anywhere else it expects `<jar name>` beside itself.
 - How the config gets in: jr's macOS build carries an empty `__DATA,__jrc` section (32 KB since PRP-42; jr 1.3.1 and earlier: 16 KB). The plugin writes the config there, followed by the app's bundle files (below), and recomputes the affected page hashes of the binary's ad-hoc signature, so the result runs on Apple silicon without a Mac in the build. jr reads its config from there and from nowhere else, as on Windows.
 - Signing: ad hoc only, with no Apple Developer ID. A copy downloaded with a browser is blocked by Gatekeeper until the user allows it (System Settings, Privacy & Security, Open Anyway). Installing with `curl` avoids that. See jr's `docs/macos.md`.
