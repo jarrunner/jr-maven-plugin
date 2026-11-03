@@ -121,6 +121,47 @@ class MacPermissionsTest {
         assertEquals(1, of(null, null, jar(Map.of(), "/Desktop", "java/awt/Desktop")).hints.size());
     }
 
+    /** The log lines of a build, to see what a Windows-only build says (nothing about macOS unless the pom has macOS settings). */
+    static List<String> infoOf(ExeMojo m) throws Exception {
+        var lines = new java.util.ArrayList<String>();
+        m.setLog(new SystemStreamLog() {
+            @Override public void info(CharSequence c) { lines.add(c.toString()); }
+        });
+        m.execute();
+        return lines;
+    }
+
+    ExeMojo windowsApp() throws Exception {
+        var m = new ExeMojo();
+        m.jar = jar(Map.of(), RECORDS);   // a jar that would need the microphone on a Mac
+        m.name = "hello";
+        m.appId = "io.github.example:hello";
+        m.appVersion = "1.0";
+        m.source = "path";
+        m.aot = false;
+        m.outputDirectory = dir.resolve("out").toFile();
+        m.platforms = List.of("windows");
+        return m;
+    }
+
+    /** A Windows-only app does not bother with the Mac at all: no check, no report, no message, even for a recording jar. */
+    @Test void aWindowsOnlyAppNeverMeetsTheMacChecks() throws Exception {
+        var m = windowsApp();
+        var lines = infoOf(m);
+        assertTrue(lines.stream().noneMatch(l -> l.contains("macOS")), lines.toString());
+        assertFalse(new File(m.outputDirectory, "macos").exists());
+    }
+
+    /** An app that keeps its Mac settings in the pom but builds for Windows only (Mac switched on by -Djr.platforms for releases)
+     *  is told once, quietly, that they are not used. */
+    @Test void macSettingsInAWindowsBuildAreNotUsedAndSaySo() throws Exception {
+        var m = windowsApp();
+        m.macosPermissions = Map.of("microphone", MIC);
+        var lines = infoOf(m);
+        assertTrue(lines.stream().anyMatch(l -> l.contains("macOS settings are in the pom") && l.contains("not used")), lines.toString());
+        assertFalse(new File(m.outputDirectory, "macos").exists());
+    }
+
     @Test void aPermissionWithNoPromptGoesOnlyIntoTheReport() throws Exception {
         var m = of(new LinkedHashMap<>(Map.of("screenRecording", "It shows the screen to the person helping remotely.")), null, jar(Map.of(), "createScreenCapture"));
         m.enforce(new SystemStreamLog(), "fail", true);

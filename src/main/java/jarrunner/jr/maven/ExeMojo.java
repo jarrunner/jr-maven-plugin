@@ -135,6 +135,12 @@ public final class ExeMojo extends AbstractMojo {
         for (var p : plats) {
             if (!p.equals("windows") && !p.equals("macos")) throw new MojoExecutionException("platforms takes windows and/or macos, not " + p);
         }
+        if (!plats.contains("macos") && (macosPermissions != null || macosPermissionsNotNeeded != null || macosInfoPlist != null
+                || macosDocumentTypes != null || macosImportedTypes != null || macosForms != null || macosIcon != null
+                || macosDisplayName != null || macosBundleId != null)) {
+            getLog().info("macOS settings are in the pom, but this build is for " + String.join(" and ", plats)
+                    + " only, so they are not used. A Windows-only app needs none; add macos to platforms (or -Djr.platforms=macos) to build the Mac app.");
+        }
         var windows = plats.contains("windows");
         if (windows && !System.getProperty("os.name", "").startsWith("Windows")) {
             getLog().warn("jr:exe stamps Windows exes with Windows' own resource calls, so they are built only on Windows. Skipped them.");

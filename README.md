@@ -71,6 +71,8 @@ mvn -Djr.installDir=<dir> package    also copies the exe to <dir>
 
 ## macOS (1.2.0)
 
+**A Windows-only app has nothing to do here.** `platforms` defaults to `windows`, and none of the `macos*` settings below, nor the permission check, is read unless `macos` is listed in `platforms` (or a build passes `-Djr.platforms=macos`). Read on only when the app is also built for a Mac.
+
 `platforms` (`jr.platforms`): `windows` (default) and/or `macos`. The Windows exes are stamped with Windows' own resource calls, so they are built only on Windows. The macOS outputs are built on any OS, Windows and CI included, and land in `target/jr/macos/`:
 
 - `macosForms` (`jr.macosForms`): `binary` (default) and/or `app`.
