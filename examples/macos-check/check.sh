@@ -15,7 +15,7 @@ plist_check() { # $1 = an Info.plist
   [ "$(plutil -extract CFBundleDocumentTypes.0.CFBundleTypeName raw "$1")" = "Markdown document" ] || fail "document type missing in $1"
   [ "$(plutil -extract CFBundleDocumentTypes.0.LSItemContentTypes.0 raw "$1")" = "net.daringfireball.markdown" ] || fail "markdown uti missing in $1"
   [ "$(plutil -extract UTImportedTypeDeclarations.0.UTTypeIdentifier raw "$1")" = "com.example.macos-check.note" ] || fail "imported type missing in $1"
-  [ "$(plutil -extract UTImportedTypeDeclarations.0.UTTypeTagSpecification.public\.filename-extension.0 raw "$1")" = "exnote" ] || fail "imported extension missing in $1"
+  [ "$(/usr/libexec/PlistBuddy -c "Print :UTImportedTypeDeclarations:0:UTTypeTagSpecification:public.filename-extension:0" "$1")" = "exnote" ] || fail "imported extension missing in $1"
 }
 
 [ -d "$APP" ] || fail "no app at $APP"
