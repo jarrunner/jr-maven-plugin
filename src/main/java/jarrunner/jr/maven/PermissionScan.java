@@ -29,6 +29,13 @@ final class PermissionScan {
 
     static final PermissionScan NOTHING = new PermissionScan();
 
+    /** A path hint is a weak signal, so it must be a whole path component: /Documents, not /DocumentsWriter (a Lucene
+     *  class), and not java/awt/Desktop (the class that opens files, which needs nothing). */
+    static boolean hinted(String text, MacPermission p) {
+        var t = text.replace("java/awt/Desktop", "");
+        return p.weak.stream().anyMatch(h -> java.util.regex.Pattern.compile(java.util.regex.Pattern.quote(h) + "(?![A-Za-z0-9_$])").matcher(t).find());
+    }
+
     static PermissionScan of(File jar) throws Exception {
         var s = new PermissionScan();
         var json = new ObjectMapper();
@@ -53,7 +60,7 @@ final class PermissionScan {
                 var text = new String(bytes, StandardCharsets.ISO_8859_1);
                 for (var p : MacPermission.values()) {
                     if (!s.strong.containsKey(p) && p.strong.stream().anyMatch(text::contains)) s.strong.put(p, name);
-                    if (!s.weak.containsKey(p) && p.weak.stream().anyMatch(text::contains)) s.weak.put(p, name);
+                    if (!s.weak.containsKey(p) && hinted(text, p)) s.weak.put(p, name);
                 }
             }
         }

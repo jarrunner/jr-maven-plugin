@@ -114,6 +114,13 @@ class MacPermissionsTest {
                 null, jar(Map.of(), "/Documents", "/Downloads")).hints.isEmpty());
     }
 
+    /** Found by building real apps with 1.5.0: java.awt.Desktop and a Lucene class both contain a path hint as a substring. */
+    @Test void aPathHintMustBeAWholePathComponent() throws Exception {
+        assertTrue(of(null, null, jar(Map.of(), "java/awt/Desktop", "org/apache/lucene/index/DocumentsWriter$FlushNotifications")).hints.isEmpty());
+        assertEquals(1, of(null, null, jar(Map.of(), "/Users/x/Documents/notes")).hints.size());
+        assertEquals(1, of(null, null, jar(Map.of(), "/Desktop", "java/awt/Desktop")).hints.size());
+    }
+
     @Test void aPermissionWithNoPromptGoesOnlyIntoTheReport() throws Exception {
         var m = of(new LinkedHashMap<>(Map.of("screenRecording", "It shows the screen to the person helping remotely.")), null, jar(Map.of(), "createScreenCapture"));
         m.enforce(new SystemStreamLog(), "fail", true);
