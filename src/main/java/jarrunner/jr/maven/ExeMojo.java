@@ -104,6 +104,24 @@ public final class ExeMojo extends AbstractMojo {
      *  E.g. NSMicrophoneUsageDescription (macOS refuses the microphone without it) or LSUIElement=true
      *  (a menu-bar app with no Dock icon). An entry here replaces a built-in one of the same key. */
     @Parameter Map<String, String> macosInfoPlist;
+    /** PRP-61: what the app itself needs from macOS, beside what the libraries in its jar declare: an Info.plist key (any
+     *  key) or an alias (microphone, camera, documents, ...) to the sentence the person reads when macOS asks. It may
+     *  reword a library's sentence. */
+    @Parameter Map<String, String> macosPermissions;
+    /** PRP-61: what the jar's classes suggest the app needs, but the author is sure it does not: key or alias to the
+     *  reason. Silences that one suspicion; the reason goes into the permissions report. */
+    @Parameter Map<String, String> macosPermissionsNotNeeded;
+    /** auto (default): a suspicion nobody declared stops a release build and only warns on any other; fail: stops
+     *  every build; warn: never stops. */
+    @Parameter(property = "jr.macosPermissionsCheck", defaultValue = "auto") String macosPermissionsCheck;
+    /** PRP-61 (the old PRP-57): the kinds of file the app opens, so Finder offers it in Open With and it can be made the
+     *  default for them. {@code <documentType>}: name, role (Editor, Viewer), rank (Alternate, Default, Owner), utis
+     *  (such as net.daringfireball.markdown) and/or extensions. Declaring only makes the app offered: receiving the
+     *  opened file is the app's own job. */
+    @Parameter List<DocumentType> macosDocumentTypes;
+    /** A file type macOS has no name for: {@code <importedType>}: identifier, description, conformsTo, extensions;
+     *  a documentType then lists the identifier among its utis. */
+    @Parameter List<ImportedType> macosImportedTypes;
     /** For source=path, the jar inside the .app (Contents/Resources) instead of the build machine's path. */
     String jarPathOverride;
 
@@ -172,7 +190,14 @@ public final class ExeMojo extends AbstractMojo {
         mac.displayName = macosDisplayName != null ? macosDisplayName : productName != null ? productName : name;
         mac.bundleId = macosBundleId != null ? macosBundleId : appId.replace(':', '.');
         mac.icon = macosNoIcon ? null : macosIcon != null ? macosIcon : icon;
+        // PRP-61: what the libraries declare, what the app declares, and what the jar suggests that nobody declared
+        var perms = MacPermissions.of(macosPermissions, macosPermissionsNotNeeded, macosInfoPlist, jar.isFile() ? PermissionScan.of(jar) : PermissionScan.NOTHING);
+        if (!jar.isFile()) getLog().info("macOS permissions: no jar at " + jar + " to look at for what the app uses");
+        perms.enforce(getLog(), macosPermissionsCheck, release != null ? release : source.equals("url"));
+        mac.documentsXml = PlistDocs.of(macosDocumentTypes, macosImportedTypes);
+        mac.extraPlist.putAll(perms.plist());
         if (macosInfoPlist != null) mac.extraPlist.putAll(macosInfoPlist);
+        getLog().info("macOS permissions report: " + perms.writeReport(new File(outputDirectory, "macos"), name, mac.displayName, mac.bundleId));
         var arch = macosArchitecture == null ? "universal" : macosArchitecture;
         var compact = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
         var files = new LinkedHashMap<String, File>();

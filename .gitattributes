@@ -1,3 +1,4 @@
 # Files baked into the exes (the application manifest): one byte sequence on every machine, or the stamped exe
 # depends on how git checked the file out.
 *.manifest text eol=lf
+*.sh text eol=lf

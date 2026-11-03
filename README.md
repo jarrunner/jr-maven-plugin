@@ -79,6 +79,26 @@ mvn -Djr.installDir=<dir> package    also copies the exe to <dir>
 - `macosArchitecture` (`jr.macosArchitecture`): `arm64`, `x86_64`, or `universal` (default; one fat binary for both).
 - `macosIcon`: a `.png`, `.icns`, or PNG-entry `.ico`; default `icon`. `macosNoIcon` (`jr.macosNoIcon`) leaves the icon out. Inside the app, jr passes `-Xdock:name` and `-Xdock:icon` to Java, so the Dock shows the app's name and icon rather than "java".
 - `macosDisplayName` (default `productName`, else `name`), `macosBundleId` (default `appId` with `:` as `.`). The app needs macOS 13 or later.
+- **Permissions (PRP-61): what the app needs from macOS is said up front, and the build checks.** On Windows an app just runs; on a Mac the microphone, the camera, the Documents, Desktop and Downloads folders and more need a sentence in the Info.plist, and without it macOS gives the app silence instead of the thing, with no error anywhere. Apps get built and tried on Windows, so the sentence is forgotten. The build therefore gathers it from four places and checks the last:
+  1. **Libraries declare what they need.** A library that records sound ships `META-INF/jarrunner/macos-permissions/<library>.json` in its own jar: `{"permissions": {"NSMicrophoneUsageDescription": "Dictation records what you say and turns it into text."}}`. The plugin reads these out of the jar it hashes (shaded libraries included) and writes the keys, so an app that uses the library cannot forget them. This is how a Cordova plugin or an Expo config plugin brings its own Info.plist key. Use a unique file name (the library's artifactId), so shading never merges two of them.
+  2. **The app declares its own, and may reword a library's sentence:** `macosPermissions`, any Info.plist key (or an alias: `microphone`, `camera`, `documents`, `desktop`, `downloads`, `removableVolumes`, `networkVolumes`, `speechRecognition`, `appleEvents`, `localNetwork`, `bluetooth`, `contacts`) to the sentence the person reads when macOS asks. The aliases are shorthand, not a closed list. `screenRecording`, `accessibility`, `inputMonitoring` and `fullDiskAccess` have no Info.plist key: macOS gives no prompt, someone turns them on in System Settings, Privacy and Security, and their text goes only into the report.
+
+     ```xml
+     <macosPermissions>
+       <documents>Opens and saves the files you choose in your Documents folder.</documents>
+       <microphone>The notes app listens while you dictate into a note.</microphone>
+     </macosPermissions>
+     ```
+  3. **`macosInfoPlist` still works:** a usage key set there counts as declared. Other keys (`LSUIElement`, ...) belong there.
+  4. **The safety net: what the jar's classes suggest.** The build looks through every class for uses that need a permission: a recording line (`javax.sound`'s `TargetDataLine`), a webcam library, screen capture, global key listening, `osascript`. If it finds one that nothing declared, it reports it, as Apple's own submission check does for the App Store. On a **release build** (`release=true`, or `source=url`) that stops the build; on any other build it warns. Path strings such as `/Documents` only produce a hint in the log. Library code that the app never calls is found too: say so with a reason, which silences just that suspicion and is written into the report:
+
+     ```xml
+     <macosPermissionsNotNeeded>
+       <microphone>The recording code in the library is never called.</microphone>
+     </macosPermissionsNotNeeded>
+     ```
+
+  An app where nothing is declared or suspected needs nothing in the pom. `macosPermissionsCheck` (`jr.macosPermissionsCheck`): `auto` (default), `fail` (every build stops) or `warn` (nothing stops). The build also writes `target/jr/macos/<name>.permissions.txt`, a plain-text list of what the app will ask for, whose sentence, and what is turned on by hand, to hand to whoever approves the app on a Mac. A scan is a nudge, never a proof: it cannot see reflection, native code or the folders a user picks, so check each prompt on a real Mac, with the app started by `open` and not from a terminal.
 - With `source=path` and no `jarPath`, a `binary` built on a Mac runs the build's own jar, as on Windows. Built anywhere else it expects `<jar name>` beside itself.
 - How the config gets in: jr's macOS build carries an empty `__DATA,__jrc` section (32 KB since PRP-42; jr 1.3.1 and earlier: 16 KB). The plugin writes the config there, followed by the app's bundle files (below), and recomputes the affected page hashes of the binary's ad-hoc signature, so the result runs on Apple silicon without a Mac in the build. jr reads its config from there and from nowhere else, as on Windows.
 - Signing: ad hoc only, with no Apple Developer ID. A copy downloaded with a browser is blocked by Gatekeeper until the user allows it (System Settings, Privacy & Security, Open Anyway). Installing with `curl` avoids that. See jr's `docs/macos.md`.

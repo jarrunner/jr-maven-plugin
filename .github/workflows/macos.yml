@@ -1,0 +1,39 @@
+# Builds and tests the plugin on a real macOS runner, then builds the example app with it and checks what
+# macOS sees (examples/macos-check/check.sh): the Info.plist keys, the signature, -Xjr:install, and whether
+# Launch Services offers the installed app for its file types. A runner has no person at its screen, so a
+# permission prompt itself cannot be seen here.
+
+name: macos
+
+on:
+  push:
+    branches: [main, 'macos-**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Build, test and install the plugin
+        run: mvn -B install
+
+      - name: Build the example app with it
+        working-directory: examples/macos-check
+        run: mvn -B package
+
+      - name: What the build says the app will ask for
+        working-directory: examples/macos-check
+        run: cat target/jr/macos/macos-check.permissions.txt
+
+      - name: Check it on this Mac
+        working-directory: examples/macos-check
+        run: sh check.sh

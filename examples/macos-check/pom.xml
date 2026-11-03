@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>io.github.example</groupId>
+  <artifactId>macos-check</artifactId>
+  <version>1.0</version>
+
+  <description>What a macOS build of an app with a recorder library looks like: the library declares the microphone in a resource of its jar, the app declares a folder and a file type. CI builds it on a macOS runner and checks the result (check.sh).</description>
+
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <jr.plugin.version>1.5.0-SNAPSHOT</jr.plugin.version>
+  </properties>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive><manifest><mainClass>example.Main</mainClass></manifest></archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>io.github.jarrunner</groupId>
+        <artifactId>jr-maven-plugin</artifactId>
+        <version>${jr.plugin.version}</version>
+        <executions><execution><goals><goal>exe</goal></goals></execution></executions>
+        <configuration>
+          <platforms><platform>macos</platform></platforms>
+          <macosForms><form>binary</form><form>app</form></macosForms>
+          <macosArchitecture>universal</macosArchitecture>
+          <macosDisplayName>Example Recorder</macosDisplayName>
+          <aot>false</aot>
+          <macosPermissions>
+            <documents>Opens and saves the files you choose in your Documents folder.</documents>
+          </macosPermissions>
+          <macosDocumentTypes>
+            <documentType>
+              <name>Markdown document</name>
+              <role>Editor</role>
+              <rank>Default</rank>
+              <utis><uti>net.daringfireball.markdown</uti></utis>
+              <extensions><extension>md</extension></extensions>
+            </documentType>
+            <documentType>
+              <name>Example note</name>
+              <utis><uti>com.example.macos-check.note</uti></utis>
+            </documentType>
+          </macosDocumentTypes>
+          <macosImportedTypes>
+            <importedType>
+              <identifier>com.example.macos-check.note</identifier>
+              <description>Example note</description>
+              <extensions><extension>exnote</extension></extensions>
+            </importedType>
+          </macosImportedTypes>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

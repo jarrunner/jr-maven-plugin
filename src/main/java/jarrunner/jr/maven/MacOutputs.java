@@ -34,6 +34,8 @@ final class MacOutputs {
     String minimumSystemVersion = "13.0";
     File icon;
     final Map<String, String> extraPlist = new LinkedHashMap<>();
+    /** CFBundleDocumentTypes and UTImportedTypeDeclarations, already as plist xml (PlistDocs). */
+    String documentsXml = "";
 
     MacOutputs(Log log, File outputDirectory, String name) {
         this.log = log;
@@ -188,6 +190,7 @@ final class MacOutputs {
             b.append("  <key>").append(xml(k)).append("</key>\n");
             b.append(v.equals("true") || v.equals("false") ? "  <" + v + "/>\n" : "  <string>" + xml(v) + "</string>\n");
         });
+        b.append(documentsXml);
         b.append("</dict>\n</plist>\n");
         return b.toString();
     }
