@@ -24,7 +24,9 @@ codesign --verify --strict "$APP" || fail "the app bundle does not verify"; ok "
 grep -q "from library example-recorder" "$OUT/macos-check.permissions.txt" || fail "the report does not credit the library"; ok "the permissions report credits the library"
 
 # the binary form installs its own app, from the plist inside it, into an empty home
-H=$(mktemp -d)
+# on a CI runner (thrown away afterwards) the app goes into the real home, because Launch Services ignores apps in temporary
+# folders; anywhere else an empty temporary home keeps this demo out of the person's own Applications
+if [ "${CI:-}" = true ]; then H="$HOME"; else H=$(mktemp -d); fi
 HOME="$H" "$BIN" -Xjr:install
 INSTALLED="$H/Applications/Example Recorder.app/Contents/Info.plist"
 [ -f "$INSTALLED" ] || fail "-Xjr:install wrote no app at $INSTALLED"
@@ -33,10 +35,13 @@ plist_check "$INSTALLED"; ok "the binary form: -Xjr:install wrote the same keys 
 # does Launch Services offer the installed app for a markdown file (Finder Open With)? and for the new type?
 LSR=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 "$LSR" -f "$H/Applications/Example Recorder.app"
-touch "$H/x.md" "$H/x.exnote"
+echo "--- Launch Services entries for the installed app:"
+"$LSR" -dump | grep -n -i -E "Example Recorder|macos-check" | head -12 || true
+echo "---"
+T=$(mktemp -d); touch "$T/x.md" "$T/x.exnote"
 offered() { osascript -l JavaScript -e "ObjC.import(\"AppKit\"); var u=\$.NSWorkspace.sharedWorkspace.URLsForApplicationsToOpenURL(\$.NSURL.fileURLWithPath(\"$1\")); var r=[]; for (var i=0;i<u.count;i++) r.push(ObjC.unwrap(u.objectAtIndex(i).path)); r.join(\"\n\")"; }
-offered "$H/x.md" | grep -q "Example Recorder.app" || { offered "$H/x.md"; fail "Open With does not offer the app for a .md file"; }
+offered "$T/x.md" | grep -q "Example Recorder.app" || { offered "$T/x.md"; fail "Open With does not offer the app for a .md file"; }
 ok "Launch Services offers the installed app for a .md file"
-offered "$H/x.exnote" | grep -q "Example Recorder.app" || { offered "$H/x.exnote"; fail "Open With does not offer the app for its own file type"; }
+offered "$T/x.exnote" | grep -q "Example Recorder.app" || { offered "$T/x.exnote"; fail "Open With does not offer the app for its own file type"; }
 ok "Launch Services offers the installed app for its own imported type"
 echo "all checks passed"
