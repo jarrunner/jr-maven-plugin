@@ -143,8 +143,9 @@ class MacOutputsTest {
         assertTrue(Files.isRegularFile(bin));
         var cfg = MachOStamper.read(Files.readAllBytes(bin));
         assertTrue(cfg.contains("\"io.github.example:hello\""), cfg);
-        // built off a Mac with source=path: the jar is expected beside the binary
-        assertTrue(cfg.contains("\"path\":\"hello.jar\""), cfg);
+        // source=path: built off a Mac the jar is expected beside the binary; built on a Mac it is the build's own jar
+        var onMac = System.getProperty("os.name", "").startsWith("Mac");
+        assertTrue(cfg.contains(onMac ? "\"path\":\"" + m.jar.getAbsolutePath() + "\"" : "\"path\":\"hello.jar\""), cfg);
         assertFalse(Files.exists(dir.resolve("out/hello.exe")), "platforms=macos makes no Windows exe");
         verifySignatures(Files.readAllBytes(bin));
     }
